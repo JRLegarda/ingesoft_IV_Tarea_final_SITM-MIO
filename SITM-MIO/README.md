@@ -231,11 +231,15 @@ Si despues de esos intentos el chunk sigue fallando, el analisis se aborta para 
 
 Esta version usa varios patrones y estilos de arquitectura que se pueden ver directamente en el codigo. Se listan porque ayudan a justificar como la solucion cumple el objetivo distribuido del proyecto.
 
+Las fuentes externas se usan como apoyo conceptual. La justificacion principal sale del codigo de esta version distribuida.
+
 ### Master-Worker
 
 **Por que se uso**
 
 Permite dividir un archivo grande en tareas independientes y repartirlas entre varios nodos. El Master conserva la responsabilidad de coordinacion, mientras que los Workers se concentran en procesar chunks. Esto ayuda a escalar horizontalmente: agregar mas workers permite procesar mas rangos en paralelo.
+
+Como apoyo, el patron Master-Worker descrito por GigaSpaces y el modelo MapReduce de Dean y Ghemawat respaldan esta idea de partir un trabajo grande, procesarlo en paralelo y combinar resultados parciales.
 
 **Donde se ve reflejado**
 
@@ -245,11 +249,18 @@ Permite dividir un archivo grande en tareas independientes y repartirlas entre v
 - `WorkerNode/src/main/java/Demo/WorkerNode.java`: inicia cada nodo Worker.
 - `WorkerNode/src/main/java/Demo/WorkerI.java`: recibe la tarea remota enviada por el Master.
 
+Referencias de apoyo:
+
+- GigaSpaces, Master-Worker Pattern: https://docs.gigaspaces.com/ie-resources/solution-hub/master-worker-pattern.html
+- Dean y Ghemawat, MapReduce: https://research.google.com/archive/mapreduce-osdi04.pdf
+
 ### Proxy remoto / RPC con ZeroC Ice
 
 **Por que se uso**
 
 Permite que el Master invoque metodos en Workers remotos como si fueran objetos locales, y que los Workers pidan bloques del archivo al Master sin compartir disco ni copiar el dataset completo. Esto separa la ubicacion fisica de los nodos de la logica de procesamiento.
+
+ZeroC Ice esta pensado para construir aplicaciones distribuidas con RPC, y el patron Proxy ayuda a representar un objeto remoto mediante una referencia local. En el proyecto, eso se ve en los proxies hacia los Workers y hacia el `FileProvider` del Master.
 
 **Donde se ve reflejado**
 
@@ -259,11 +270,19 @@ Permite que el Master invoque metodos en Workers remotos como si fueran objetos 
 - `Demo.FileProviderI`: implementa `FileProvider.readChunk(...)` en el Master.
 - `DatagramReader.RemoteRangeSource`: usa `fileProvider.readChunk(offset, size)` desde el Worker.
 
+Referencias de apoyo:
+
+- ZeroC Ice: https://www.zeroc.com/
+- ZeroC Ice Java API, ObjectAdapter: https://doc.zeroc.com/api/ice/3.7/java/com/zeroc/Ice/ObjectAdapter.html
+- Refactoring Guru, Proxy: https://refactoring.guru/design-patterns/proxy
+
 ### Work-Stealing / cola compartida de tareas
 
 **Por que se uso**
 
 Ayuda a balancear carga cuando los workers no tienen el mismo rendimiento o cuando algunos chunks tardan mas que otros. En vez de asignar una cantidad fija de chunks a cada Worker desde el inicio, todos toman trabajo desde una cola comun. El Worker que termina primero toma otro chunk.
+
+La idea se relaciona con estrategias de work-stealing usadas para mejorar el balanceo dinamico: los procesadores que quedan libres toman trabajo pendiente. En este proyecto se implementa de forma simple con una cola compartida de chunks.
 
 **Donde se ve reflejado**
 
@@ -271,16 +290,27 @@ Ayuda a balancear carga cuando los workers no tienen el mismo rendimiento o cuan
 - `WorkerThread.run()`: cada hilo hace `chunkQueue.poll()` para tomar el siguiente chunk disponible.
 - Los contadores `completedChunks`, `terminalChunks` y `failedChunks` permiten reportar progreso y controlar terminacion.
 
+Referencias de apoyo:
+
+- Blumofe et al., Cilk: https://dl.acm.org/doi/10.1145/209937.209958
+- Copia MIT CSAIL de Cilk: https://people.csail.mit.edu/matei/courses/2015/6.S897/readings/cilk.pdf
+
 ### Facade
 
 **Por que se uso**
 
 Da una entrada simple para iniciar el analisis sin exponer al punto de entrada todos los detalles del scheduler. Esto mantiene `MasterNode` mas legible y concentra la coordinacion interna en las clases correspondientes.
 
+Esto coincide con la intencion del patron Facade: ofrecer una interfaz mas simple sobre un conjunto de clases internas.
+
 **Donde se ve reflejado**
 
 - `MasterNode/src/main/java/org/example/facade/SystemFacade.java`: expone `startAnalysis(String filePath)`.
 - `Demo.MasterNode`: usa `new SystemFacade(scheduler).startAnalysis(selectedFile)` para iniciar el procesamiento.
+
+Referencia de apoyo:
+
+- Refactoring Guru, Facade: https://refactoring.guru/design-patterns/facade
 
 ### Producer-Consumer
 
@@ -288,12 +318,18 @@ Da una entrada simple para iniciar el analisis sin exponer al punto de entrada t
 
 Separa la lectura/parsing de datagramas del calculo de velocidad dentro de cada Worker. El lector produce datagramas y el calculador los consume. Esto evita cargar todo el chunk como objetos en memoria y permite que lectura y calculo avancen de forma desacoplada con backpressure.
 
+El soporte tecnico directo en Java es `BlockingQueue`, que permite coordinar un productor y un consumidor de forma segura entre hilos.
+
 **Donde se ve reflejado**
 
 - `WorkerNode/src/main/java/org/example/core/ChunkProcessor.java`: crea una `ArrayBlockingQueue<Datagram>` y dos hilos.
 - `DatagramReader`: produce datagramas y los inserta en la cola.
 - `SpeedCalculator`: consume datagramas desde la cola.
 - `DatagramReader.POISON_PILL`: marca el final de la produccion para cerrar el consumidor.
+
+Referencia de apoyo:
+
+- Oracle Java API, BlockingQueue: https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/BlockingQueue.html
 
 ### Scheduler / Job Scheduler
 
@@ -312,10 +348,16 @@ Centraliza la planificacion del trabajo distribuido: determina el tamano del arc
 
 Permite adaptar el contrato remoto Ice a clases internas de procesamiento. El Worker recibe una llamada con tipos generados por Slice, pero internamente usa `ProcessingEngine`, `ChunkProcessor`, `ChunkResult` y `RouteMonthResult`.
 
+Esto coincide con la idea del patron Adapter: conectar una interfaz externa con una implementacion interna que usa otros tipos o una estructura diferente.
+
 **Donde se ve reflejado**
 
 - `WorkerNode/src/main/java/Demo/WorkerI.java`: adapta la llamada remota `processDatagramLog(...)` hacia `ProcessingEngine`.
 - `WorkerNode/src/main/java/org/example/engine/ProcessingEngine.java`: convierte `ChunkResult` a `Demo.TaskResult` y `RouteMonthResult` a `Demo.RouteMonthSpeed`.
+
+Referencia de apoyo:
+
+- Refactoring Guru, Adapter: https://refactoring.guru/design-patterns/adapter
 
 ### Result Aggregator / Reduce
 
@@ -323,11 +365,18 @@ Permite adaptar el contrato remoto Ice a clases internas de procesamiento. El Wo
 
 Cada Worker calcula resultados parciales. El Master necesita fusionarlos correctamente para obtener una sola matriz final. La agregacion evita promediar promedios: suma primero `speedSum` y `count`, y solo al final calcula la velocidad promedio.
 
+Este rol es similar al Aggregator de Enterprise Integration Patterns y tambien a la fase Reduce de MapReduce: recibir resultados parciales y consolidarlos en una salida final.
+
 **Donde se ve reflejado**
 
 - `MasterNode/src/main/java/org/example/report/RouteMonthCsvWriter.java`: `aggregate(...)` combina todos los `TaskResult`.
 - `RouteMonthCsvWriter.Totals`: acumula `speedSum` y `count`.
 - `writeMatrix(...)`: calcula `speedSum / count` para cada celda ruta-mes.
+
+Referencias de apoyo:
+
+- Enterprise Integration Patterns, Aggregator: https://www.enterpriseintegrationpatterns.com/patterns/messaging/Aggregator.html
+- Dean y Ghemawat, MapReduce: https://research.google.com/archive/mapreduce-osdi04.pdf
 
 ### Retry / tolerancia basica a fallos
 
@@ -335,11 +384,21 @@ Cada Worker calcula resultados parciales. El Master necesita fusionarlos correct
 
 En una ejecucion distribuida pueden fallar llamadas remotas, workers o lecturas de red. Reintentar chunks evita abortar inmediatamente por fallos transitorios. Si el chunk falla definitivamente, el sistema aborta para no entregar un CSV incompleto.
 
+Esta decision se alinea con el patron Retry: reintentar operaciones que pueden fallar temporalmente, pero con un limite para no ocultar fallos permanentes.
+
 **Donde se ve reflejado**
 
 - `MasterController.MAX_CHUNK_ATTEMPTS = 3`.
 - `WorkerThread.run()`: incrementa `chunk.attempts`, reencola el chunk si aun quedan intentos y registra fallos definitivos.
 - `executeWorkStealing(...)`: lanza una excepcion si hubo chunks fallidos despues de los reintentos.
+
+Referencia de apoyo:
+
+- Microsoft Azure Architecture Center, Retry pattern: https://learn.microsoft.com/en-us/azure/architecture/patterns/retry
+
+Referencia general:
+
+- Enterprise Integration Patterns: https://www.enterpriseintegrationpatterns.com/
 
 ## Configuracion del Master
 
