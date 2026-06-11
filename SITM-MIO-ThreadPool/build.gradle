@@ -1,0 +1,41 @@
+plugins {
+    id 'java'
+    id 'application'
+    id 'com.gradleup.shadow' version '9.2.2'
+}
+
+group = 'org.example'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // No external dependencies needed
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+application {
+    mainClass = 'org.example.concurrent.ThreadPoolApp'
+}
+
+shadowJar {
+    archiveBaseName.set('sitm-mio-threadpool')
+    archiveClassifier.set('')
+    archiveVersion.set('')
+    mergeServiceFiles()
+    manifest {
+        attributes('Main-Class': 'org.example.concurrent.ThreadPoolApp')
+    }
+}
+
+jar {
+    manifest {
+        attributes('Main-Class': 'org.example.concurrent.ThreadPoolApp')
+    }
+}

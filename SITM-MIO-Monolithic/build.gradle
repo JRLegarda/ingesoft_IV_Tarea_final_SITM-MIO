@@ -1,0 +1,41 @@
+plugins {
+    id 'java'
+    id 'application'
+    id 'com.gradleup.shadow' version '9.2.2'
+}
+
+group = 'org.example'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // No external dependencies needed
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+application {
+    mainClass = 'org.example.monolithic.MonolithicApp'
+}
+
+shadowJar {
+    archiveBaseName.set('sitm-mio-monolithic')
+    archiveClassifier.set('')
+    archiveVersion.set('')
+    mergeServiceFiles()
+    manifest {
+        attributes('Main-Class': 'org.example.monolithic.MonolithicApp')
+    }
+}
+
+jar {
+    manifest {
+        attributes('Main-Class': 'org.example.monolithic.MonolithicApp')
+    }
+}

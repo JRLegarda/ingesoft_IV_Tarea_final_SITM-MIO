@@ -1,0 +1,53 @@
+plugins {
+    id 'java'
+    id 'application'
+    id 'com.zeroc.gradle.ice-builder.slice' version '1.5.0'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
+}
+
+group = 'org.example'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'com.zeroc:ice:3.7.10'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+}
+
+application {
+    mainClass = 'Demo.WorkerNode'
+}
+
+slice {
+    java {
+        files = fileTree(dir: 'src/main/slice', include: '*.ice')
+    }
+}
+
+jar {
+    manifest {
+        attributes(
+                "Main-Class": "Demo.WorkerNode"
+        )
+    }
+}
+
+shadowJar {
+    archiveBaseName.set("worker-node")
+    archiveClassifier.set("")   // para que el jar final NO tenga "-all"
+    archiveVersion.set("")      // para evitar "-1.0-SNAPSHOT"
+    mergeServiceFiles()
+
+    manifest {
+        attributes(
+                "Main-Class": "Demo.WorkerNode"
+        )
+    }
+}

@@ -1,0 +1,18 @@
+# Debe ser compatible con Master.RemoteReadSizeBytes.
+Ice.MessageSizeMax=65536
+
+# Hilos ICE del worker para recibir tareas y mantener respuestas fluidas.
+Ice.ThreadPool.Server.Size=4
+Ice.ThreadPool.Server.SizeMax=16
+Ice.ThreadPool.Server.SizeWarn=0
+Ice.ThreadPool.Client.Size=4
+Ice.ThreadPool.Client.SizeMax=16
+
+WorkerAdapter.Endpoints=tcp -p 10000
+
+# Tamano de cada lectura remota que el worker pide al Master. Probar 8 MB, 16 MB o 32 MB.
+# Debe ser menor que Ice.MessageSizeMax.
+Master.RemoteReadSizeBytes=8388608
+
+# En false reduce logs por chunk durante pruebas grandes.
+Master.Verbose=false

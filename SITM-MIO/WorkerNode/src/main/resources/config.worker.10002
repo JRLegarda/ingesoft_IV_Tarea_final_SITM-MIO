@@ -1,0 +1,9 @@
+Ice.MessageSizeMax=65536
+Ice.ThreadPool.Server.Size=4
+Ice.ThreadPool.Server.SizeMax=16
+Ice.ThreadPool.Server.SizeWarn=0
+Ice.ThreadPool.Client.Size=4
+Ice.ThreadPool.Client.SizeMax=16
+WorkerAdapter.Endpoints=tcp -p 10002
+Master.RemoteReadSizeBytes=8388608
+Master.Verbose=false

@@ -1,0 +1,15 @@
+build/
+.gradle/
+.idea/
+*.class
+*.iml
+out/
+
+# Output CSV files
+route_month_speeds_threadpool.csv
+route_month_speeds*.csv
+
+# Large datagram data files (keep .gitkeep)
+data/*.csv
+data/*.gz
+!data/.gitkeep
