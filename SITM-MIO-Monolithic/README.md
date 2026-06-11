@@ -1,125 +1,152 @@
-# SITM-MIO — Versión Monolítica
+# SITM-MIO - Version monolitica
 
-## Objetivo del proyecto
+Esta carpeta contiene la version monolitica del proyecto final de Ingenieria de Software IV para el analisis de datagramas del SITM-MIO.
 
-Calcula la **velocidad promedio por ruta por mes** para todas las rutas activas del SITM-MIO
-(Sistema Integrado de Transporte Masivo de Occidente, Cali) a partir de datagramas GPS registrados
-por los buses. Procesa el archivo de datagramas de forma **secuencial en un solo hilo**, sin
-concurrencia ni distribución.
+El objetivo de esta version es resolver el problema de forma directa y secuencial: leer el archivo de datagramas, calcular velocidades entre posiciones consecutivas de un mismo bus y generar una matriz con la velocidad promedio de cada ruta activa por mes. Sirve como linea base para comparar la mejora de rendimiento de la version con `ThreadPool` y de la version distribuida con ZeroC Ice.
 
-Esta versión es la **Versión 1** del proyecto final de Ingeniería de Software IV (Universidad Icesi),
-y sirve como línea base para comparar tiempos de ejecución con las versiones ThreadPool y
-distribuida.
+## Relacion con el enunciado
 
----
+El enunciado pide construir varias formas de procesar el mismo problema. Esta implementacion corresponde a la primera version:
 
-## Relación con el enunciado del proyecto
+- Version monolitica: procesa todo el archivo en un solo proceso y en un solo hilo.
+- Version concurrente local: esta en `SITM-MIO-ThreadPool`.
+- Version distribuida: esta en `SITM-MIO`, separada en `MasterNode` y `WorkerNode`.
 
-El enunciado solicita:
-1. ✅ **Versión monolítica** — esta versión.
-2. Versión con ThreadPool — ver `SITM-MIO-ThreadPool`.
-3. Versión distribuida con ZeroC Ice — ver `SITM-MIO repo`.
+En esta version no hay particionamiento del archivo, no hay hilos de trabajo y no hay comunicacion remota. Todo el calculo ocurre dentro de la misma aplicacion Java.
 
----
+## Que hace
 
-## Ubicación del archivo de datos
+La aplicacion toma un CSV de datagramas GPS de buses del MIO y calcula, para cada ruta y mes, la velocidad promedio observada.
 
-Coloca el archivo de datagramas en:
+El flujo general es:
 
+1. Lee el archivo `data/datagrams-MiniPilot.csv`, o el archivo indicado por argumento.
+2. Convierte cada linea valida en un datagrama.
+3. Mantiene el ultimo datagrama visto por cada bus.
+4. Cuando llega un nuevo datagrama del mismo bus y de la misma ruta, calcula la distancia entre ambos puntos y la convierte a velocidad.
+5. Agrupa las velocidades por `lineId` y mes.
+6. Carga el catalogo de rutas activas `lines-241-ActiveGT.csv`.
+7. Genera el archivo `route_month_speeds_monolithic.csv`.
+
+El resultado final es una matriz donde cada fila es una ruta activa y cada columna mensual contiene la velocidad promedio en km/h.
+
+## Reglas de calculo
+
+Para evitar mediciones inconsistentes, el programa aplica estas reglas:
+
+- Solo compara datagramas consecutivos del mismo bus.
+- Solo calcula velocidad si ambos datagramas pertenecen al mismo `lineId`.
+- Ignora coordenadas invalidas.
+- Ignora diferencias de tiempo menores o iguales a 0 segundos.
+- Ignora diferencias de tiempo mayores o iguales a 300 segundos.
+- Ignora velocidades menores o iguales a 0 km/h.
+- Ignora velocidades mayores o iguales a 120 km/h.
+- Calcula el promedio como `speedSum / count`, no como promedio de promedios.
+- Usa distancia Haversine entre coordenadas.
+
+## Archivos importantes
+
+- `src/main/java/org/example/monolithic/MonolithicApp.java`: punto de entrada de la aplicacion.
+- `src/main/java/org/example/io/DatagramFileReader.java`: lector secuencial del archivo de datagramas.
+- `src/main/java/org/example/core/RouteMonthAccumulator.java`: acumula velocidades por ruta y mes.
+- `src/main/java/org/example/report/RouteMonthCsvWriter.java`: escribe la matriz final en CSV.
+- `src/main/resources/lines-241-ActiveGT.csv`: catalogo de rutas activas.
+- `data/`: carpeta esperada para ubicar el CSV de datagramas de prueba.
+
+## Datos de entrada
+
+Por defecto, la aplicacion espera el archivo:
+
+```text
+SITM-MIO-Monolithic/data/datagrams-MiniPilot.csv
 ```
-SITM-MIO-Monolithic/
-└── data/
-    └── datagrams-MiniPilot.csv   ← aquí
+
+Tambien se puede pasar otra ruta como argumento al ejecutar el JAR.
+
+El catalogo de rutas activas ya esta incluido en:
+
+```text
+src/main/resources/lines-241-ActiveGT.csv
 ```
 
-El archivo `lines-241-ActiveGT.csv` ya está incluido en `src/main/resources/` y se copia
-automáticamente al classpath durante el build.
+## Compilacion
 
----
+En Windows PowerShell:
 
-## Cómo compilar
+```powershell
+cd SITM-MIO-Monolithic
+.\gradlew.bat shadowJar
+```
+
+En macOS, Linux o Git Bash:
 
 ```bash
 cd SITM-MIO-Monolithic
 ./gradlew shadowJar
 ```
 
-Esto genera: `build/libs/sitm-mio-monolithic.jar`
+El JAR ejecutable queda en:
 
----
+```text
+build/libs/sitm-mio-monolithic.jar
+```
 
-## Cómo ejecutar
+## Ejecucion
 
-### Con ruta por defecto (`data/datagrams-MiniPilot.csv`):
+Con la ruta por defecto:
 
 ```bash
 java -jar build/libs/sitm-mio-monolithic.jar
 ```
 
-### Con ruta personalizada:
+Con una ruta personalizada para los datagramas:
 
 ```bash
-java -jar build/libs/sitm-mio-monolithic.jar /ruta/a/datagrams-MiniPilot.csv
+java -jar build/libs/sitm-mio-monolithic.jar data/datagrams-MiniPilot.csv
 ```
 
-### Con ruta de datagramas y ruta de rutas activas:
+Con ruta personalizada para datagramas y rutas activas:
 
 ```bash
 java -jar build/libs/sitm-mio-monolithic.jar data/datagrams-MiniPilot.csv lines-241-ActiveGT.csv
 ```
 
----
+## Salida
 
-## Formato del CSV de salida
+La aplicacion genera:
 
-Archivo: `route_month_speeds_monolithic.csv`
-
+```text
+route_month_speeds_monolithic.csv
 ```
+
+Formato general:
+
+```text
 route_id,route_short_name,route_description,2018-06,2018-07,...
-101,"T31","Terminal - Universidades - Guadalupe",32.4512,28.1034,...
-...
+101,"T31","Descripcion de la ruta",32.4512,28.1034,...
 ```
 
-- Una fila por cada ruta activa en `lines-241-ActiveGT.csv`.
-- Una columna por cada mes con datos en el dataset.
-- Celdas vacías si la ruta no tiene mediciones ese mes.
-- Velocidades en **km/h** con 4 decimales.
+Cada fila corresponde a una ruta activa. Las columnas mensuales se crean con los meses encontrados en los resultados. Si una ruta no tiene mediciones para un mes, la celda queda vacia.
 
----
+## Metricas en consola
 
-## Métricas impresas en consola
+Al finalizar, el programa imprime un resumen con:
 
-Al finalizar, el programa imprime:
+- Archivo procesado.
+- Tamano del archivo.
+- Lineas validas y lineas omitidas.
+- Datagramas procesados.
+- Mediciones de velocidad aceptadas.
+- Celdas ruta-mes con datos.
+- Tiempo total de ejecucion.
+- Throughput en MB/s.
+- Ruta absoluta del CSV generado.
 
-```
-[Monolithic] Archivo de entrada:        data/datagrams-MiniPilot.csv
-[Monolithic] Tamaño del archivo:        XXX bytes (XX.XX MB)
-[Monolithic] Datagramas procesados:     XXX,XXX
-[Monolithic] Mediciones de velocidad:   XXX,XXX
-[Monolithic] Celdas ruta-mes con datos: XXX
-[Monolithic] Tiempo total:              XXX ms (XX.XX s)
-[Monolithic] Throughput:                XX.XX MB/s
-[Monolithic] CSV generado:              route_month_speeds_monolithic.csv
-```
+Estas metricas son la referencia para comparar contra la version `ThreadPool` y contra la version distribuida.
 
----
+## Supuestos y limitaciones
 
-## Reglas de negocio aplicadas
-
-- Solo se comparan datagramas **consecutivos del mismo bus**.
-- Solo se calcula velocidad si el datagrama previo tiene el **mismo `lineId`**.
-- Se ignoran datagramas con coordenadas inválidas.
-- Se ignoran pares con delta de tiempo `<= 0` o `>= 300` segundos.
-- Se ignoran velocidades `<= 0` o `>= 120 km/h`.
-- El promedio se calcula como `speedSum / count` (sin promediar promedios).
-- La distancia se calcula con la fórmula de **Haversine**.
-
----
-
-## Limitaciones / Supuestos
-
-- El archivo de datagramas debe estar ordenado cronológicamente por bus para mejores resultados
-  (el algoritmo mantiene solo el último datagrama visto por bus).
-- Procesamiento de un solo hilo: adecuado para `datagrams-MiniPilot.csv`. Para archivos más
-  grandes (`datagrams4Pilot.csv`), considera la versión ThreadPool.
-- Se requiere Java 17 o superior.
+- El procesamiento es de un solo hilo, por lo que su rendimiento depende de una sola ejecucion secuencial.
+- El algoritmo guarda solo el ultimo datagrama visto por bus; por eso conviene que el archivo mantenga un orden temporal razonable.
+- Esta version es adecuada como punto de comparacion y prueba funcional. Para aprovechar varios nucleos en la misma maquina, usar `SITM-MIO-ThreadPool`.
+- Requiere Java 17 o superior.

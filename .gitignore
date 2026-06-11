@@ -1,0 +1,53 @@
+# IDEs and editors
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
+
+# Java and Gradle build output
+.gradle/
+build/
+out/
+bin/
+target/
+*.class
+*.jar
+*.war
+*.ear
+
+# Gradle local files
+gradle-app.setting
+!gradle/wrapper/gradle-wrapper.jar
+!**/gradle/wrapper/gradle-wrapper.jar
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+*.swp
+*.swo
+*.bak
+*.orig
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Local environment and secrets
+.env
+.env.*
+*.local
+
+# Generated reports and runtime output
+route_month_speeds*.csv
+problems-report.html
+
+# Large local datasets
+data/*.csv
+**/data/*.csv
+datagrams*.csv

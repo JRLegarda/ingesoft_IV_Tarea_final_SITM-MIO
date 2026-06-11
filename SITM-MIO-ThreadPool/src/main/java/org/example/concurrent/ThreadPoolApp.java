@@ -223,6 +223,17 @@ public class ThreadPoolApp {
         double speedup       = totalMs > 0 ? (double) sumChunkMs / totalMs : 0.0;
 
         System.out.println();
+        System.out.println("-------------------------------------------------------");
+        System.out.println("[ThreadPool] Detalle por chunk:");
+        for (ChunkResult cr : chunkResults) {
+            System.out.printf("  %-12s | %,6d ms | %,8d datagramas | %,8d velocidades | %,5d ruta-mes%n",
+                    cr.getLabel(),
+                    cr.getExecutionTimeMs(),
+                    cr.getProcessedCount(),
+                    cr.getSpeedCount(),
+                    cr.getRouteMonthResults().size());
+        }
+
         System.out.println("=======================================================");
         System.out.println("  SITM-MIO — Reporte Final");
         System.out.println("=======================================================");
@@ -242,16 +253,6 @@ public class ThreadPoolApp {
         System.out.printf("[ThreadPool] Throughput:                 %.2f MB/s%n", throughputMBs);
         System.out.printf("[ThreadPool] Chunk mas rapido:           %,d ms%n", minChunk);
         System.out.printf("[ThreadPool] Chunk mas lento:            %,d ms%n", maxChunk);
-        System.out.println("-------------------------------------------------------");
-        System.out.println("[ThreadPool] Detalle por chunk:");
-        for (ChunkResult cr : chunkResults) {
-            System.out.printf("  %-12s | %,6d ms | %,8d datagramas | %,8d velocidades | %,5d ruta-mes%n",
-                    cr.getLabel(),
-                    cr.getExecutionTimeMs(),
-                    cr.getProcessedCount(),
-                    cr.getSpeedCount(),
-                    cr.getRouteMonthResults().size());
-        }
         System.out.println("-------------------------------------------------------");
         System.out.printf("[ThreadPool] CSV generado:               %s%n", outputAbsolute);
         System.out.println("=======================================================");
