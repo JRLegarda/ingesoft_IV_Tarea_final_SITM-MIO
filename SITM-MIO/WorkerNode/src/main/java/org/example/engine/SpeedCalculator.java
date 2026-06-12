@@ -55,19 +55,19 @@ public class SpeedCalculator implements Runnable {
 
                         if (seconds > 0 && seconds <= MAX_SECONDS_BETWEEN_POSITIONS) {
                             double maxAllowedMeters = MAX_VALID_SPEED_MPS * seconds;
-                            double lowerBoundMeters = GeoUtils.cheapLowerBoundMeters(
-                                    last.getLatRad(), last.getLonRad(), last.getCosLat(),
-                                    datagram.getLatRad(), datagram.getLonRad(), datagram.getCosLat()
+                            double lowerBoundMeters = GeoUtils.euclideanLowerBoundMeters(
+                                    last.getLatitud(), last.getLongitud(),
+                                    datagram.getLatitud(), datagram.getLongitud()
                             );
                             if (lowerBoundMeters > maxAllowedMeters) {
                                 continue;
                             }
 
                             // El odometro no se usa porque no es confiable en buses antiguos del MIO.
-                            // El calculo oficial usa unicamente distancia GPS Haversine y diferencia temporal.
-                            double distance = GeoUtils.haversineRadians(
-                                    last.getLatRad(), last.getLonRad(), last.getCosLat(),
-                                    datagram.getLatRad(), datagram.getLonRad(), datagram.getCosLat()
+                            // El calculo oficial usa distancia GPS euclidiana aproximada y diferencia temporal.
+                            double distance = GeoUtils.euclideanDistanceMeters(
+                                    last.getLatitud(), last.getLongitud(),
+                                    datagram.getLatitud(), datagram.getLongitud()
                             );
                             double speedKmh = (distance / seconds) * 3.6;
 
